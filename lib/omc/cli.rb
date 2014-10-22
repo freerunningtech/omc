@@ -5,7 +5,7 @@ require 'aws-sdk'
 module Omc
   class Cli < Thor
     desc 'ssh', 'Connect to an instance on a stack on an account'
-    def ssh(account, stack)
+    def ssh(account, stack, hostname=nil)
       iam_account = vault.account(account) || abort("Account #{account.inspect} not configured")
       user = iam_account.users.first || abort("No users configured under #{account.inspect}")
       ops = ::AWS::OpsWorks::Client.new user.credentials
@@ -13,7 +13,11 @@ module Omc
       ops_stack = get_by_name ops.describe_stacks[:stacks], stack
       instances = ops.describe_instances(stack_id: ops_stack[:stack_id])[:instances]
       instances.reject!{|i| i[:status] != "online" }
-      instance = instances.first || abort("No running instances")
+      if hostname
+        instance = get_by_name(instances, hostname, :hostname)
+      else
+        instance = instances.first || abort("No running instances")
+      end
       exec "ssh", "#{user.name}@#{instance[:public_ip]}"
     end
 
@@ -22,10 +26,10 @@ module Omc
       AwsCredVault::Toml.new File.join(ENV['HOME'], '.shoelaces')
     end
 
-    def get_by_name collection, name
+    def get_by_name collection, name, key=:name
       collection.detect do |x|
-        x[:name] == name
-      end || abort("Can't find #{name.inspect} among #{collection.map{|x| x[:name] }.inspect}")
+        x[key] == name
+      end || abort("Can't find #{name.inspect} among #{collection.map{|x| x[key] }.inspect}")
     end
   end
 end
