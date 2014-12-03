@@ -39,7 +39,7 @@ module Omc
           i[:status],
           i[:availability_zone],
           i[:ec2_instance_id],
-          i[:public_ip],
+          i[:public_ip] || i[:private_ip],
         ]
       end
       thor.print_table(details)
@@ -70,7 +70,7 @@ module Omc
     end
 
     def ssh_host
-      "#{@user.name}@#{instance[:public_ip]}"
+      "#{@user.name}@#{instance[:public_ip] || instance[:private_ip]}"
     end
 
     def account
